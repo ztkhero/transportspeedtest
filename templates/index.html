@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Speed Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label, input, button {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        input {
+            padding: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .result {
+            text-align: center;
+        }
+        .result p {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+        .download {
+            color: green;
+        }
+        .upload {
+            color: red;
+        }
+        .ping {
+            color: purple;
+        }
+        .jitter {
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>TfNSW Network Speed Test</h1>
+    <form id="testForm">
+        <label for="server_ip">Server B IP Address:</label>
+        <input type="text" id="server_ip" name="server_ip" required>
+        <button id="startTestBtn" type="submit">Start Test</button>
+    </form>
+    <div id="results" class="result">
+        <h2>Results:</h2>
+        <p class="download">Download Speed: 'N/A'</p>
+        <p class="upload">Upload Speed: 'N/A'</p>
+        <p class="ping">Ping: 'N/A'</p>
+        <p class="jitter">Jitter: 'N/A'</p>
+    </div>
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const serverIp = document.getElementById('server_ip').value;
+            const resultsDiv = document.getElementById('results');
+            const startTestBtn = document.getElementById('startTestBtn');
+            startTestBtn.disabled = true; // Disable the button
+            
+            let countdown = 30;
+            const countdownInterval = setInterval(() => {
+                resultsDiv.innerHTML = `<p>Testing... ${countdown} seconds</p>`;
+                countdown--;
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+
+            fetch('/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ server_ip: serverIp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+                clearInterval(countdownInterval);
+                const html = `
+                    <h2>Results:</h2>
+                    <p class="download">Download Speed: ${data.download || 'N/A'}</p>
+                    <p class="upload">Upload Speed: ${data.upload || 'N/A'}</p>
+                    <p class="ping">Ping: ${data.ping.avg || 'N/A'} ms</p>
+                    <p class="jitter">Jitter: ${data.jitter || 'N/A'} ms</p>
+                `
+                resultsDiv.innerHTML = html;
+                startTestBtn.disabled = false; // Enable the button after finishing
+            })
+            .catch(error => {
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                startTestBtn.disabled = false; // Enable the button after finishing (in case of error)
+            });
+        });
+    </script>
+</body>
+</html>

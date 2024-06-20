@@ -1,0 +1,19 @@
+version: '3'
+services:
+  flask:
+    # Use your pre-built Flask image
+    image: ztkhero/tfnswspeed
+    # ports:
+    #   - "5000:5000"
+    # Add any additional configurations like volumes if needed
+    # volumes:
+    #   - ./app:/app  # Example of mounting local directory into container
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8060:80"
+    depends_on:
+      - flask
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
