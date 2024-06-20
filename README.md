@@ -16,7 +16,7 @@ sudo systemctl start nginx
 sudo systemctl enable nginx -->
 
 
-## run in docker
+## run in docker (recommand)
 Need to install "iperf3" for client 
     client command: iperf3 -s
 
