@@ -1,8 +1,5 @@
 # Speedtest
 ## run in vm
-Need to install "iperf3" for both server and client (server end will be installed in Dockerfile)
-    client command: iperf3 -s
-
 The destination IP must be reachable 
 
 pip install Flask
@@ -17,9 +14,6 @@ sudo systemctl enable nginx -->
 
 
 ## run in docker (recommand)
-Need to install "iperf3" for client 
-    client command: iperf3 -s
-
 The destination IP must be reachable 
 
 docker build -t ztkhero/tfnswspeed .

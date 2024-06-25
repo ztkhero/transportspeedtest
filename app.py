@@ -17,13 +17,21 @@ def create_test_file():
     with open(TEST_FILE_PATH, 'wb') as f:
         f.write(os.urandom(TEST_FILE_SIZE))
 
+def get_client_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        return request.headers.getlist("X-Forwarded-For")[0]
+    elif request.headers.get("X-Real-IP"):
+        return request.headers.get("X-Real-IP")
+    else:
+        return request.remote_addr
+
 @app.route('/')
 def index():
     return render_template('speedtest.html')
 
 @app.route('/start_test')
 def start_test():
-    client_ip = request.remote_addr
+    client_ip = get_client_ip()
     return jsonify({'client_ip': client_ip})
 
 @app.route('/download_test')
