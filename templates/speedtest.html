@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TfNSW DCS - Speedtest</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #results { display: flex; justify-content: space-around; margin-top: 20px; }
+        .metric { font-size: 24px; font-weight: bold; }
+        button { font-size: 18px; padding: 10px 20px; }
+        #progress { margin-top: 20px; }
+        #download { color: purple; }
+        #upload { color: green; }
+        #ping, #jitter { color: red; }
+        #client-ip { margin-top: 20px; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>TfNSW - Speedtest</h1>
+    <button onclick="runTest()">Start</button>
+    <div id="progress"></div>
+    <div id="results">
+        <div>
+            <h3>Download</h3>
+            <p id="download" class="metric">0.00</p>
+            <p>Mbps</p>
+        </div>
+        <div>
+            <h3>Upload</h3>
+            <p id="upload" class="metric">0.00</p>
+            <p>Mbps</p>
+        </div>
+        <div>
+            <h3>Ping</h3>
+            <p id="ping" class="metric">0.00</p>
+            <p>ms</p>
+        </div>
+        <div>
+            <h3>Jitter</h3>
+            <p id="jitter" class="metric">0.00</p>
+            <p>ms</p>
+        </div>
+    </div>
+    <div id="client-ip"></div>
+    <script>
+        const DOWNLOAD_SIZE = 20 * 1024 * 1024; // 20MB
+        const UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
+        const ITERATIONS = 5;
+        const PING_ITERATIONS = 20;
+
+        function runTest() {
+            document.getElementById('progress').textContent = 'Starting test...';
+            fetch('/start_test')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('client-ip').textContent = `Client IP: ${data.client_ip}`;
+                    performSpeedTest();
+                });
+        }
+
+        function performSpeedTest() {
+            testDownload(DOWNLOAD_SIZE, ITERATIONS)
+                .then(downloadSpeed => {
+                    document.getElementById('download').textContent = downloadSpeed.toFixed(2);
+                    document.getElementById('progress').textContent = 'Testing upload...';
+                    return testUpload(UPLOAD_SIZE, ITERATIONS);
+                })
+                .then(uploadSpeed => {
+                    document.getElementById('upload').textContent = uploadSpeed.toFixed(2);
+                    document.getElementById('progress').textContent = 'Testing ping...';
+                    return testPing(PING_ITERATIONS);
+                })
+                .then(({ avgPing, jitter }) => {
+                    document.getElementById('ping').textContent = avgPing.toFixed(2);
+                    document.getElementById('jitter').textContent = jitter.toFixed(2);
+                    document.getElementById('progress').textContent = 'Test completed!';
+                });
+        }
+
+        function testDownload(downloadSize, iterations) {
+            return new Promise((resolve) => {
+                let totalSpeed = 0;
+                let completed = 0;
+
+                function doDownload() {
+                    const start = performance.now();
+                    fetch(`/download_test?cb=${Math.random()}`)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const end = performance.now();
+                            const duration = (end - start) / 1000; // seconds
+                            const speed = (downloadSize * 8) / duration / 1000000; // Mbps
+                            totalSpeed += speed;
+                            completed++;
+
+                            document.getElementById('progress').textContent = `Download test: ${completed}/${iterations}`;
+
+                            if (completed < iterations) {
+                                doDownload();
+                            } else {
+                                resolve(totalSpeed / iterations);
+                            }
+                        });
+                }
+
+                doDownload();
+            });
+        }
+
+        function testUpload(uploadSize, iterations) {
+            return new Promise((resolve) => {
+                let totalSpeed = 0;
+                let completed = 0;
+
+                function doUpload() {
+                    const data = new ArrayBuffer(uploadSize);
+                    const start = performance.now();
+                    fetch('/upload', { method: 'POST', body: data })
+                        .then(() => {
+                            const end = performance.now();
+                            const duration = (end - start) / 1000; // seconds
+                            const speed = (uploadSize * 8) / duration / 1000000; // Mbps
+                            totalSpeed += speed;
+                            completed++;
+
+                            document.getElementById('progress').textContent = `Upload test: ${completed}/${iterations}`;
+
+                            if (completed < iterations) {
+                                doUpload();
+                            } else {
+                                resolve(totalSpeed / iterations);
+                            }
+                        });
+                }
+
+                doUpload();
+            });
+        }
+
+        function testPing(iterations) {
+            return new Promise((resolve) => {
+                let totalPing = 0;
+                let pings = [];
+                let completed = 0;
+
+                function doPing() {
+                    const start = performance.now();
+                    fetch('/ping')
+                        .then(() => {
+                            const end = performance.now();
+                            const pingTime = end - start;
+                            totalPing += pingTime;
+                            pings.push(pingTime);
+                            completed++;
+
+                            document.getElementById('progress').textContent = `Ping test: ${completed}/${iterations}`;
+
+                            if (completed < iterations) {
+                                doPing();
+                            } else {
+                                const avgPing = totalPing / iterations;
+                                const jitter = calculateJitter(pings);
+                                resolve({ avgPing, jitter });
+                            }
+                        });
+                }
+
+                doPing();
+            });
+        }
+
+        function calculateJitter(pings) {
+            const differences = [];
+            for (let i = 1; i < pings.length; i++) {
+                differences.push(Math.abs(pings[i] - pings[i-1]));
+            }
+            return differences.reduce((sum, diff) => sum + diff, 0) / differences.length;
+        }
+        
+    </script>
+</body>
+</html>
